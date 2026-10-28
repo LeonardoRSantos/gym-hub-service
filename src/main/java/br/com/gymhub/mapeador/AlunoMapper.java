@@ -1,9 +1,9 @@
-package br.com.gymhub.mapper;
+package br.com.gymhub.mapeador;
 
 import org.springframework.data.domain.Page;
 
-import br.com.gymhub.controller.response.AlunoSalvo;
-import br.com.gymhub.domain.entity.AlunoEntidade;
+import br.com.gymhub.controlador.resposta.AlunoSalvo;
+import br.com.gymhub.dominio.entidade.AlunoEntidade;
 
 public final class AlunoMapper {
 	

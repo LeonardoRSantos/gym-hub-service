@@ -1,13 +1,13 @@
-package br.com.gymhub.service;
+package br.com.gymhub.servico;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import br.com.gymhub.controller.request.AlunoFiltro;
-import br.com.gymhub.domain.entity.AlunoEntidade;
-import br.com.gymhub.domain.repository.AlunoRepository;
+import br.com.gymhub.controlador.requisicao.AlunoFiltro;
+import br.com.gymhub.dominio.entidade.AlunoEntidade;
+import br.com.gymhub.dominio.repositorio.AlunoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

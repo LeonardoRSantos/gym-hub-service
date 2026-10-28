@@ -1,4 +1,4 @@
-package br.com.gymhub.domain.entity;
+package br.com.gymhub.dominio.entidade;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

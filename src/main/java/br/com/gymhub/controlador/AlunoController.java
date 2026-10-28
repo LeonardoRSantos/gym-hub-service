@@ -1,4 +1,4 @@
-package br.com.gymhub.controller;
+package br.com.gymhub.controlador;
 
 import org.springframework.data.domain.Pageable;
 
@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import br.com.gymhub.controller.request.AlunoFiltro;
-import br.com.gymhub.controller.response.AlunoSalvo;
-import br.com.gymhub.service.AlunoService;
+import br.com.gymhub.controlador.requisicao.AlunoFiltro;
+import br.com.gymhub.controlador.resposta.AlunoSalvo;
+import br.com.gymhub.servico.AlunoService;
 import lombok.RequiredArgsConstructor;
 
 @RestController

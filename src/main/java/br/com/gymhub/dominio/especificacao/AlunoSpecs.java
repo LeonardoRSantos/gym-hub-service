@@ -1,12 +1,12 @@
-package br.com.gymhub.domain.specs;
+package br.com.gymhub.dominio.especificacao;
 
 import java.util.LinkedList;
 import java.util.Objects;
 
 import org.springframework.data.jpa.domain.Specification;
 
-import br.com.gymhub.controller.request.AlunoFiltro;
-import br.com.gymhub.domain.entity.AlunoEntidade;
+import br.com.gymhub.controlador.requisicao.AlunoFiltro;
+import br.com.gymhub.dominio.entidade.AlunoEntidade;
 import jakarta.persistence.criteria.Predicate;
 
 public class AlunoSpecs {

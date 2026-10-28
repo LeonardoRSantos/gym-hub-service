@@ -1,11 +1,11 @@
-package br.com.gymhub.service;
+package br.com.gymhub.servico;
 
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.domain.Page;
 
-import br.com.gymhub.controller.request.AlunoFiltro;
-import br.com.gymhub.controller.response.AlunoSalvo;
+import br.com.gymhub.controlador.requisicao.AlunoFiltro;
+import br.com.gymhub.controlador.resposta.AlunoSalvo;
 
 public interface AlunoService {
 

@@ -1,4 +1,4 @@
-package br.com.gymhub.controller.request;
+package br.com.gymhub.controlador.requisicao;
 
 import java.time.LocalDate;
 

@@ -1,4 +1,4 @@
-package br.com.gymhub.controller;
+package br.com.gymhub.controlador;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

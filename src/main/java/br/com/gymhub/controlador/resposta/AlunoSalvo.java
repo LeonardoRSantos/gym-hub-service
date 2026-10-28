@@ -1,4 +1,4 @@
-package br.com.gymhub.controller.response;
+package br.com.gymhub.controlador.resposta;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;

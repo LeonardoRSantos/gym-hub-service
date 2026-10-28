@@ -1,4 +1,4 @@
-package br.com.gymhub.service;
+package br.com.gymhub.servico;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -6,12 +6,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.gymhub.controller.request.AlunoFiltro;
-import br.com.gymhub.controller.response.AlunoSalvo;
-import br.com.gymhub.domain.entity.AlunoEntidade;
-import br.com.gymhub.domain.repository.AlunoRepository;
-import br.com.gymhub.domain.specs.AlunoSpecs;
-import br.com.gymhub.mapper.AlunoMapper;
+import br.com.gymhub.controlador.requisicao.AlunoFiltro;
+import br.com.gymhub.controlador.resposta.AlunoSalvo;
+import br.com.gymhub.dominio.entidade.AlunoEntidade;
+import br.com.gymhub.dominio.repositorio.AlunoRepository;
+import br.com.gymhub.dominio.especificacao.AlunoSpecs;
+import br.com.gymhub.mapeador.AlunoMapper;
 import lombok.RequiredArgsConstructor;
 
 @Service

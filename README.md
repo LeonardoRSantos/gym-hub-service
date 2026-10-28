@@ -15,10 +15,10 @@ O projeto está em desenvolvimento. Hoje, a API oferece consulta paginada de alu
 | Cadastro, alteração e exclusão | Ainda não implementados |
 | API de planos e matrículas | Ainda não implementada |
 | Autenticação e autorização | Sem Spring Security no POM |
-| Banco na configuração padrão | Datasource, JPA e Flyway desativados |
+| Banco na configuração padrão | PostgreSQL, JPA e Flyway habilitados |
 | Integração com PostgreSQL nos testes | Configurada via Docker Compose e perfil `integration` |
 
-**A configuração padrão ainda não permite iniciar a API com o repository real.** É necessário configurar o banco e retirar as exclusões de autoconfiguração, conforme a seção de execução local. Os testes de integração já fazem essa configuração em um perfil próprio.
+A API pode ser iniciada junto com o PostgreSQL usando `docker compose up -d --build`. O Flyway cria a estrutura na primeira inicialização. O banco da aplicação possui volume persistente e fica separado do banco usado nos testes.
 
 ## Tecnologias e requisitos
 
@@ -43,16 +43,16 @@ src/
 ├── main/
 │   ├── java/br/com/gymhub/
 │   │   ├── GymHubApplication.java
-│   │   ├── controller/
+│   │   ├── controlador/
 │   │   │   ├── AlunoController.java
-│   │   │   ├── request/AlunoFiltro.java
-│   │   │   └── response/AlunoSalvo.java
-│   │   ├── domain/
-│   │   │   ├── entity/AlunoEntidade.java
-│   │   │   ├── repository/AlunoRepository.java
-│   │   │   └── specs/AlunoSpecs.java
-│   │   ├── mapper/AlunoMapper.java
-│   │   └── service/
+│   │   │   ├── requisicao/AlunoFiltro.java
+│   │   │   └── resposta/AlunoSalvo.java
+│   │   ├── dominio/
+│   │   │   ├── entidade/AlunoEntidade.java
+│   │   │   ├── repositorio/AlunoRepository.java
+│   │   │   └── especificacao/AlunoSpecs.java
+│   │   ├── mapeador/AlunoMapper.java
+│   │   └── servico/
 │   │       ├── AlunoService.java
 │   │       └── AlunoServiceImpl.java
 │   └── resources/
@@ -61,8 +61,8 @@ src/
 └── test/
     ├── java/br/com/gymhub/
     │   ├── GymHubApplicationTest.java
-    │   ├── controller/AlunoControllerIT.java
-    │   └── service/AlunoServiceImplTest.java
+    │   ├── controlador/AlunoControllerIT.java
+    │   └── servico/AlunoServiceImplTest.java
     └── resources/
         ├── application-integration.yml
         └── db/aluno/insert_alunos.sql
@@ -176,7 +176,7 @@ mvn '-Dtest=AlunoControllerIT' test
 
 O argumento entre aspas funciona também no PowerShell. O teste usa `@SpringBootTest`, `@AutoConfigureMockMvc` e o perfil `integration`. Não inicia um servidor HTTP externo: as requisições passam pelo MockMvc dentro da aplicação de teste.
 
-O Flyway aplica a migração real, `@Sql` insere a massa de alunos antes de cada cenário e `@Transactional` desfaz os inserts ao final. Não são usados mocks de service/repository, autenticação, WireMock ou Testcontainers.
+O Flyway aplica a migração real, `@Sql` insere a massa de alunos antes de cada cenário e `@Transactional` desfaz os inserts ao final. Não são usados mocks de servico/repository, autenticação, WireMock ou Testcontainers.
 
 Os cenários verificam filtro por nome com paginação, busca sem resultados e listagem sem filtro com ordenação.
 
@@ -198,61 +198,87 @@ O Compose publica a porta somente em `127.0.0.1:15432` e não configura volume p
 
 O arquivo `application-integration.yml` fica em `src/test/resources` e não é incluído no JAR da aplicação. Use somente um banco dedicado aos testes, pois o Flyway aplica migrações e os testes inserem dados.
 
-## Executar a API localmente
+## Executar com Docker
 
-O arquivo `src/main/resources/application.yml` ainda mantém exclusões de datasource, JPA e Flyway da base inicial. Como `AlunoServiceImpl` depende de `AlunoRepository`, executar apenas `mvn spring-boot:run` com essa configuração falha ao criar o contexto.
-
-Para habilitar a execução local, disponibilize um PostgreSQL e substitua as exclusões por uma configuração de conexão. Exemplo de conteúdo para `application.yml`:
-
-```yaml
-spring:
-  application:
-    name: gym-hub-service
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/gymhub}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-  flyway:
-    enabled: true
-```
-
-Esse trecho é uma orientação de configuração; o arquivo atual não foi modificado. Crie o banco e informe `DB_USER` e `DB_PASSWORD` antes de iniciar. Use `DB_URL` para alterar o endereço, porta ou nome do banco.
-
-Após configurar:
+Com Docker Desktop em execução, na raiz do projeto:
 
 ```shell
-mvn spring-boot:run
+docker compose up -d --build
 ```
 
-A porta padrão é `8080`. Exemplo de chamada:
+O Compose constrói a imagem da aplicação, inicia o PostgreSQL e aguarda o healthcheck do banco antes de iniciar a API. O Flyway aplica as migrações, e o Hibernate valida o esquema. A primeira construção baixa as imagens e dependências Maven; não exige Java ou Maven instalados na máquina.
+
+A API fica disponível em `http://localhost:8080`. Consulte os alunos:
 
 ```shell
 curl "http://localhost:8080/api/v1/aluno?nome=ana&page=0&size=10&sort=nome,asc"
 ```
 
-A migração cria a estrutura, mas não cadastra alunos de exemplo na aplicação. A massa em `src/test/resources` é exclusiva dos testes.
+A migração não insere alunos de exemplo. Em um banco novo, a consulta retorna uma página vazia.
 
-## Imagem Docker da aplicação
-
-O `Dockerfile` compila o projeto em uma etapa Maven e executa o JAR em Java 17:
+Comandos úteis:
 
 ```shell
-docker build -t gym-hub-service .
+docker compose ps
+docker compose logs -f aplicacao
+docker compose down
 ```
 
-A construção da imagem pula os testes e não provisiona PostgreSQL. Para executar o container, a configuração de banco precisa ser habilitada conforme a seção anterior e deve apontar para um PostgreSQL acessível pelo container. O `compose.test.yml` sobe somente o banco de testes.
+`docker compose down` preserva os dados no volume `dados-postgres`. Para apagar o banco de desenvolvimento e recriá-lo do zero, utilize explicitamente `docker compose down -v`.
+
+### Configuração dos containers
+
+| Variável | Padrão | Finalidade |
+| --- | --- | --- |
+| `APP_PORT` | `8080` | Porta da API na máquina |
+| `DB_USER` | `gymhub` | Usuário PostgreSQL |
+| `DB_PASSWORD` | `gymhub` | Senha de desenvolvimento |
+
+Essas variáveis podem ser definidas no ambiente ou em um arquivo `.env` local. O Compose conecta a aplicação em `jdbc:postgresql://banco:5432/gymhub`; o banco não publica porta na máquina. As credenciais padrão servem para desenvolvimento. Alterar as credenciais no Compose não altera um banco já inicializado no volume.
+
+O `Dockerfile` usa construção em duas etapas: Maven com Java 17 para gerar o JAR e uma imagem JRE 17 para executá-lo. O build da imagem pula os testes. `.dockerignore` exclui Git, IDE, build local e arquivos de ambiente do contexto enviado ao Docker.
+
+## Executar sem Docker para a aplicação
+
+Com um PostgreSQL disponível, configure as variáveis de ambiente e execute:
+
+```shell
+mvn spring-boot:run
+```
+
+| Variável | Padrão fora do Compose |
+| --- | --- |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/gymhub` |
+| `DB_USER` | `gymhub` |
+| `DB_PASSWORD` | `gymhub` |
+
+O banco `gymhub` deve existir e estar acessível. JPA e Flyway já estão habilitados em `application.yml`. Para executar via JAR, use `mvn clean package` e `java -jar target/gym-hub-service-0.0.1-SNAPSHOT.jar` com as mesmas variáveis.
+
+## Organização dos pacotes
+
+O pacote raiz continua `br.com.gymhub`. Os subpacotes do projeto estão em português, sem acentos:
+
+| Pacote | Responsabilidade |
+| --- | --- |
+| `controlador` | Endpoints HTTP |
+| `controlador.requisicao` | DTOs recebidos pela API |
+| `controlador.resposta` | DTOs retornados pela API |
+| `servico` | Regras e coordenação das consultas |
+| `dominio.entidade` | Entidades JPA |
+| `dominio.repositorio` | Acesso ao banco |
+| `dominio.especificacao` | Critérios de busca JPA |
+| `mapeador` | Conversão de entidades para respostas |
+
+Os testes seguem os mesmos pacotes. Os nomes das classes existentes e a URL `/api/v1/aluno` foram preservados.
 
 ## Problemas comuns
 
 | Sintoma | O que verificar |
 | --- | --- |
 | Docker não conecta ao mecanismo Linux | Iniciar Docker Desktop e aguardar o serviço ficar disponível |
-| Porta `15432` ocupada | Liberar a porta ou ajustar o Compose e `TEST_DB_URL` em conjunto |
-| Erro de conexão na integração | Subir o Compose com `--wait` e conferir as variáveis `TEST_DB_*` |
-| `AlunoRepository` não encontrado ao iniciar a API | Retirar as exclusões de banco/JPA e configurar PostgreSQL |
+| Porta `8080` ocupada | Definir outra `APP_PORT` antes de subir o Compose |
+| Porta `15432` ocupada nos testes | Ajustar `compose.test.yml` e `TEST_DB_URL` em conjunto |
+| Erro de conexão na integração | Subir o Compose de testes com `--wait` e conferir `TEST_DB_*` |
+| API não inicia | Consultar `docker compose logs aplicacao banco` e verificar a conexão/migrações |
 | Integração não executada no build padrão | Usar `mvn '-Dtest=AlunoControllerIT' test` |
 | Busca não encontra nome com letras maiúsculas | Enviar `nome` em minúsculas enquanto o filtro não normaliza o parâmetro |
