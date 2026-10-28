@@ -1,0 +1,14 @@
+spring:
+  # Reativa banco e migracoes apenas nos testes de integracao.
+  autoconfigure:
+    exclude: ""
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:15432/gymhub_test}
+    username: ${TEST_DB_USER:gymhub_test}
+    password: ${TEST_DB_PASSWORD:gymhub_test}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
