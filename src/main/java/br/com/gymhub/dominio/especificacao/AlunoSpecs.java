@@ -22,6 +22,28 @@ public class AlunoSpecs {
 								"%" + filtro.getNome() + "%"));
 			}
 			
+			String cpfLimpo = filtro.getCpf() != null ?					
+					filtro.getCpf().replaceAll("\\D", "")
+					: null; 
+			
+			if(Objects.nonNull(cpfLimpo) && !cpfLimpo.isBlank()) {
+				predicates.add(criteriaBuilder.like
+						(criteriaBuilder.lower(root.get("cpf")),
+								"%" + cpfLimpo + "%"));
+			}
+			
+			if(Objects.nonNull(filtro.getEmail())) {
+				predicates.add(criteriaBuilder.like
+						(criteriaBuilder.lower(root.get("email")),
+								"%" + filtro.getEmail() + "%"));
+			}
+			
+			if(Objects.nonNull(filtro.getDataNascimento())) {
+				predicates.add(criteriaBuilder.equal(root.get("dataNascimento"),
+						filtro.getDataNascimento()));
+			}
+			
+
 			return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
 		};		
 	}

@@ -18,7 +18,7 @@ O projeto está em desenvolvimento. Hoje, a API oferece consulta paginada de alu
 | Banco na configuração padrão | PostgreSQL, JPA e Flyway habilitados |
 | Integração com PostgreSQL nos testes | Configurada via Docker Compose e perfil `integration` |
 
-A API pode ser iniciada junto com o PostgreSQL usando `docker compose up -d --build`. O Flyway cria a estrutura na primeira inicialização. O banco da aplicação possui volume persistente e fica separado do banco usado nos testes.
+A API pode ser iniciada junto com o PostgreSQL usando `docker compose up -d`. O Flyway cria a estrutura na primeira inicialização. O banco da aplicação possui volume persistente e fica separado do banco usado nos testes.
 
 ## Tecnologias e requisitos
 
@@ -160,55 +160,53 @@ A migração `src/main/resources/db/migration/V1__FIRST_TABLES.sql` cria:
 
 Há diferenças entre as restrições declaradas na entidade e na migração, como a unicidade da data de nascimento na entidade. O perfil de integração usa `ddl-auto: validate`: a estrutura é criada pelo Flyway, sem atualização automática do esquema pelo Hibernate.
 
-## Compilar e executar testes sem Docker
+## Subir o ambiente e executar todos os testes
+
+Com Docker Desktop em execução, use somente estes dois comandos na raiz do projeto:
 
 ```shell
+docker compose up -d
 mvn clean install
 ```
 
-Para executar apenas os testes da suíte padrão:
+O Compose principal sobe três serviços:
 
-```shell
-mvn test
-```
+| Serviço | Finalidade |
+| --- | --- |
+| `aplicacao` | API em `http://localhost:8080` |
+| `banco` | PostgreSQL da aplicação, com volume persistente |
+| `banco-teste` | PostgreSQL exclusivo dos testes em `127.0.0.1:15432` |
 
-Sem Maven instalado, substitua `mvn` por `./mvnw` no Linux/Git Bash ou por `./mvnw.cmd` no PowerShell.
+Na primeira execução, o Compose constrói a imagem da API se ela ainda não existir.
+Em execuções seguintes, ele reutiliza a imagem existente. Após alterar o código e
+querer atualizar a API que roda no container, execute `docker compose build aplicacao`
+e depois `docker compose up -d`.
+
+`mvn clean install` compila, executa testes unitários e de contexto pelo Surefire,
+gera o JAR, executa os testes de integração `*IT` pelo Failsafe e verifica os
+resultados antes de instalar o artefato no repositório Maven local. Uma falha em
+qualquer suíte interrompe o build. O Maven usa o banco que já foi iniciado pelo
+Compose; ele não inicia nem desliga containers.
 
 | Classe | Tipo e cobertura |
 | --- | --- |
-| `AlunoServiceImplTest` | Unitário com Mockito: mapeamento dos resultados, página vazia e propagação de exceção do repository |
-| `GymHubApplicationTest` | Teste de contexto Spring com repository simulado, sem banco |
-| `AlunoControllerIT` | Integração com Spring Boot, MockMvc, service, repository e PostgreSQL reais |
+| `AlunoServiceImplTest` | Unitário com Mockito: mapeamento, página vazia e propagação de exceção |
+| `GymHubApplicationTest` | Contexto Spring completo, com JPA, Flyway e PostgreSQL de testes reais |
+| `AlunoControllerIT` | Integração com MockMvc, controller, service e repository reais |
 
-O teste unitário cria o repository com `mock()` no `@BeforeEach`, usa AssertJ para asserções e verifica as chamadas com `verify()`.
+Os testes com contexto usam o perfil `integration`. O Flyway aplica as migrações,
+o Hibernate apenas valida o esquema e `@Sql` prepara os alunos de cada cenário do
+controller. `@Transactional` desfaz esses inserts ao final. Não há mocks de
+persistência nos testes com contexto nem servidor HTTP externo para o MockMvc.
 
-O POM atual não configura execução automática de classes `*IT`. Por isso, `mvn test`, `mvn verify` e `mvn clean install` não executam o teste de integração; ele deve ser selecionado explicitamente.
+O teste unitário do service permanece sem contexto Spring e sem conexão com banco.
+Para executá-lo isoladamente, use `mvn '-Dtest=AlunoServiceImplTest' test`.
+`mvn test` executa as classes `*Test`; `mvn verify` e `mvn clean install` incluem
+as classes `*IT`. Os relatórios ficam em `target/surefire-reports` e
+`target/failsafe-reports`, respectivamente.
 
-## Executar a integração com Docker
-
-Com Docker Desktop em execução, suba o banco exclusivo de testes:
-
-```shell
-docker compose -p gymhub-tests -f compose.test.yml up -d --wait
-```
-
-Execute o teste:
-
-```shell
-mvn '-Dtest=AlunoControllerIT' test
-```
-
-O argumento entre aspas funciona também no PowerShell. O teste usa `@SpringBootTest`, `@AutoConfigureMockMvc` e o perfil `integration`. Não inicia um servidor HTTP externo: as requisições passam pelo MockMvc dentro da aplicação de teste.
-
-O Flyway aplica a migração real, `@Sql` insere a massa de alunos antes de cada cenário e `@Transactional` desfaz os inserts ao final. Não são usados mocks de servico/repository, autenticação, WireMock ou Testcontainers.
-
-Os cenários verificam filtro por nome com paginação, busca sem resultados e listagem sem filtro com ordenação.
-
-Ao terminar, remova o ambiente de testes:
-
-```shell
-docker compose -p gymhub-tests -f compose.test.yml down -v
-```
+Sem Maven instalado, substitua `mvn` por `./mvnw` no Linux/Git Bash ou por
+`./mvnw.cmd` no PowerShell.
 
 ### Configuração do banco de testes
 
@@ -218,19 +216,25 @@ docker compose -p gymhub-tests -f compose.test.yml down -v
 | `TEST_DB_USER` | `gymhub_test` |
 | `TEST_DB_PASSWORD` | `gymhub_test` |
 
-O Compose publica a porta somente em `127.0.0.1:15432` e não configura volume persistente. As credenciais são exclusivas para desenvolvimento/testes. As variáveis acima alteram a conexão usada pelo teste; não alteram a configuração do container no Compose.
+As variáveis alteram a conexão dos testes, não as credenciais do serviço
+`banco-teste` no Compose. Use apenas um banco dedicado aos testes.
+`application-integration.yml` fica em `src/test/resources` e não é incluído no JAR.
+O banco de testes não possui volume nomeado persistente; o banco da aplicação
+permanece separado no volume `dados-postgres`.
 
-O arquivo `application-integration.yml` fica em `src/test/resources` e não é incluído no JAR da aplicação. Use somente um banco dedicado aos testes, pois o Flyway aplica migrações e os testes inserem dados.
+O antigo `compose.test.yml` foi substituído pelo serviço `banco-teste` do Compose
+principal. Se ainda houver um container do projeto antigo usando a porta 15432,
+pare-o antes de subir o ambiente unificado.
 
 ## Executar com Docker
 
 Com Docker Desktop em execução, na raiz do projeto:
 
 ```shell
-docker compose up -d --build
+docker compose up -d
 ```
 
-O Compose constrói a imagem da aplicação, inicia o PostgreSQL e aguarda o healthcheck do banco antes de iniciar a API. O Flyway aplica as migrações, e o Hibernate valida o esquema. A primeira construção baixa as imagens e dependências Maven; não exige Java ou Maven instalados na máquina.
+O Compose constrói a imagem da aplicação quando necessário, inicia os dois bancos PostgreSQL e aguarda o healthcheck do banco da aplicação antes de iniciar a API. O Flyway aplica as migrações, e o Hibernate valida o esquema. A primeira construção baixa as imagens e dependências Maven; não exige Java ou Maven instalados na máquina.
 
 A API fica disponível em `http://localhost:8080`. Consulte os alunos:
 
@@ -301,8 +305,8 @@ Os testes seguem os mesmos pacotes. Os nomes das classes existentes e a URL `/ap
 | --- | --- |
 | Docker não conecta ao mecanismo Linux | Iniciar Docker Desktop e aguardar o serviço ficar disponível |
 | Porta `8080` ocupada | Definir outra `APP_PORT` antes de subir o Compose |
-| Porta `15432` ocupada nos testes | Ajustar `compose.test.yml` e `TEST_DB_URL` em conjunto |
-| Erro de conexão na integração | Subir o Compose de testes com `--wait` e conferir `TEST_DB_*` |
+| Porta `15432` ocupada nos testes | Ajustar a porta de `banco-teste` em `compose.yml` e `TEST_DB_URL` em conjunto |
+| Erro de conexão na integração | Subir `docker compose up -d`, conferir `docker compose ps` e as variáveis `TEST_DB_*` |
 | API não inicia | Consultar `docker compose logs aplicacao banco` e verificar a conexão/migrações |
-| Integração não executada no build padrão | Usar `mvn '-Dtest=AlunoControllerIT' test` |
+| Integração não executada | Usar `mvn clean install` ou `mvn verify`; a fase `test` isolada não executa o Failsafe |
 | Busca não encontra nome com letras maiúsculas | Enviar `nome` em minúsculas enquanto o filtro não normaliza o parâmetro |

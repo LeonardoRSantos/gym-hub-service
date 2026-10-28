@@ -24,4 +24,6 @@ public class AlunoController{
 	public ResponseEntity<Page<AlunoSalvo>> filtro(AlunoFiltro filtro, Pageable pageable){
 		return ResponseEntity.ok(alunoService.filtro(filtro, pageable));
 	}
+	
+	
 }
