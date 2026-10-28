@@ -1,0 +1,478 @@
+{
+  "info": {
+    "name": "Gym Hub Service",
+    "description": "API executada pela IDE, com PostgreSQL no Docker. Inicie os bancos com docker compose up -d e execute GymHubApplication. Apenas endpoints existentes. Exemplos usam valores ilustrativos: a migração não cadastra alunos. Os testes validam formato e HTTP, sem exigir dados fixos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "page",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "size",
+      "value": "10",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+          "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+          "pm.test(\"Resposta paginada\", function () {",
+          "  const pagina = pm.response.json();",
+          "  pm.expect(pagina.content).to.be.an(\"array\");",
+          "  pm.expect(pagina.totalElements).to.be.a(\"number\");",
+          "  pm.expect(pagina.number).to.be.a(\"number\");",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Alunos",
+      "item": [
+        {
+          "name": "Listar alunos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Lista todos os alunos com paginação e ordenação.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar por nome",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Busca parcial por nome. Utilize letras minúsculas.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?nome=ana&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "ana"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar por CPF parcial",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Busca CPFs que contenham o trecho informado.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?cpf=1&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "cpf",
+                  "value": "1"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar por CPF completo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Pesquisa com todos os números do CPF.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?cpf=12345678909&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "cpf",
+                  "value": "12345678909"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar por CPF com pontuação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "A API remove os caracteres não numéricos do filtro.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?cpf=123.456.789-09&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "cpf",
+                  "value": "123.456.789-09"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar por e-mail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Busca parcial por e-mail. Utilize letras minúsculas.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?email=ana@example.com&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "ana@example.com"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar por nascimento",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Pesquisa por data de nascimento no formato ISO yyyy-MM-dd.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?dataNascimento=2000-01-02&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "dataNascimento",
+                  "value": "2000-01-02"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Combinar filtros",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Os filtros são combinados com AND.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?nome=ana&cpf=12345678909&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "ana"
+                },
+                {
+                  "key": "cpf",
+                  "value": "12345678909"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar segunda página",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Consulta a página de índice 1; a primeira página tem índice 0.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?page=1&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar nome inexistente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Exemplo de busca que pode retornar página vazia.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno?nome=nome-inexistente-colecao&page={{page}}&size={{size}}&sort=nome,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "nome-inexistente-colecao"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

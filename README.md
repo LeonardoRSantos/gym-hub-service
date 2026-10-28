@@ -1,312 +1,210 @@
 # Gym Hub Service
 
-Backend para gerenciamento de academia, alunos, planos e matrículas, desenvolvido em Java com Spring Boot.
+Backend para gerenciamento de academia com Java 17 e Spring Boot 3.3.5.
+A aplicação roda na IDE; o Docker é utilizado apenas para os bancos PostgreSQL.
 
-O projeto está em desenvolvimento. Hoje, a API oferece consulta paginada de alunos com filtro por nome. A migração inicial também prepara as tabelas de planos e matrículas, mas esses módulos ainda não possuem implementação Java ou endpoints.
+## Início rápido
 
-## Estado atual
+1. Inicie o Docker Desktop e execute na raiz do projeto:
+
+   ```shell
+   docker compose up -d
+   ```
+
+2. Execute `src/main/java/br/com/gymhub/GymHubApplication.java` pela IDE,
+   sem ativar o perfil `integration`. Alternativamente:
+
+   ```shell
+   mvn spring-boot:run
+   ```
+
+3. Acesse a API em `http://localhost:8080` ou importe a collection do Postman.
+
+O Compose não inicia a API. Ele sobe somente estes bancos:
+
+| Serviço | Endereço na máquina | Banco | Usuário / senha padrão |
+| --- | --- | --- | --- |
+| `banco` | `localhost:5433` | `gymhub` | `gymhub` / `gymhub` |
+| `banco-teste` | `localhost:15432` | `gymhub_test` | `gymhub_test` / `gymhub_test` |
+
+A porta 5433 evita conflito com instalações locais do PostgreSQL que usam 5432.
+A primeira inicialização pode levar alguns segundos; confira `docker compose ps`
+e aguarde os serviços ficarem `healthy`.
+
+## Configuração da IDE
+
+A configuração padrão já conecta ao banco Docker:
+
+| Variável | Padrão |
+| --- | --- |
+| `DB_URL` | `jdbc:postgresql://localhost:5433/gymhub` |
+| `DB_USER` | `gymhub` |
+| `DB_PASSWORD` | `gymhub` |
+
+Com os padrões do Compose, não é necessário adicionar variáveis à configuração de
+execução da IDE. Se já houver `DB_URL`, `DB_USER`, `DB_PASSWORD` ou
+`SPRING_DATASOURCE_*` configuradas, confira seus valores: elas podem sobrescrever
+o `application.yml`.
+
+O Compose aceita `DB_USER` e `DB_PASSWORD` pelo ambiente ou por `.env`. Caso altere
+as credenciais, configure os mesmos valores na IDE. Um `.env` é lido pelo Compose,
+mas não é automaticamente carregado pelo Java executado na IDE. As credenciais
+padrão são para desenvolvimento. Alterá-las no Compose não altera a senha de um
+banco já inicializado no volume.
+
+A porta HTTP padrão é 8080. Para alterá-la na IDE, configure `SERVER_PORT` e ajuste
+`baseUrl` na collection. Não é necessário Dockerfile nem imagem da aplicação.
+
+## Collection do Postman
+
+Arquivo: [postman/GymHub.postman_collection.json](postman/GymHub.postman_collection.json).
+
+No Postman, utilize **Import**, selecione o arquivo e execute as requisições da
+pasta **Alunos**. A variável de collection `baseUrl` já aponta para
+`http://localhost:8080`; `page` e `size` controlam a paginação. Não há autenticação.
+
+A collection contém listagem, filtro por nome, CPF parcial/completo/com pontuação,
+e-mail, nascimento, combinação de filtros, segunda página e nome inexistente.
+Cada requisição valida HTTP 200, Content-Type JSON e estrutura paginada, sem
+exigir um número fixo de registros.
+
+Os valores são exemplos: o Flyway cria as tabelas, mas não insere alunos no banco
+da aplicação. Por isso, respostas vazias são esperadas em um banco novo. A massa
+SQL de `src/test/resources` é exclusiva dos testes automatizados.
+
+## Funcionalidades atuais
 
 | Recurso | Situação |
 | --- | --- |
-| Consulta de alunos | Implementada em `GET /api/v1/aluno` |
-| Filtro por nome, paginação e ordenação | Implementados |
+| `GET /api/v1/aluno` | Implementado |
+| Filtros por nome, CPF, e-mail e nascimento | Implementados |
+| Paginação e ordenação | Implementadas |
 | Entidade, repository, service e mapper de aluno | Implementados |
-| Tabelas de aluno, plano e matrícula | Definidas na migração inicial |
-| Cadastro, alteração e exclusão | Ainda não implementados |
-| API de planos e matrículas | Ainda não implementada |
-| Autenticação e autorização | Sem Spring Security no POM |
-| Banco na configuração padrão | PostgreSQL, JPA e Flyway habilitados |
-| Integração com PostgreSQL nos testes | Configurada via Docker Compose e perfil `integration` |
+| Tabelas `aluno`, `plano` e `matricula` | Criadas por migração Flyway |
+| Cadastro, edição e exclusão | Ainda não implementados |
+| Endpoints de planos e matrículas | Ainda não implementados |
+| Autenticação | Sem Spring Security |
 
-A API pode ser iniciada junto com o PostgreSQL usando `docker compose up -d`. O Flyway cria a estrutura na primeira inicialização. O banco da aplicação possui volume persistente e fica separado do banco usado nos testes.
+Exemplo:
 
-## Tecnologias e requisitos
-
-| Tecnologia | Uso |
-| --- | --- |
-| Java 17 | Versão configurada para compilação |
-| Spring Boot 3.3.5 | Inicialização e configuração da aplicação |
-| Spring Web / MVC | API REST e suporte a MockMvc |
-| Spring Data JPA / Hibernate | Persistência, paginação e Specifications |
-| PostgreSQL | Banco de dados; imagem `postgres:16-alpine` nos testes |
-| Flyway | Migrações SQL versionadas |
-| Lombok | Getters, setters, builders e construtores |
-| Spring Validation | Dependência disponível para validação |
-| JUnit 5, Mockito e AssertJ | Testes |
-
-Para compilar, utilize JDK 17 ou superior e Maven, ou o Maven Wrapper incluído no repositório. Docker Desktop com o mecanismo de containers Linux e Docker Compose são necessários para o PostgreSQL de testes.
-
-## Estrutura do projeto
-
-```text
-src/
-├── main/
-│   ├── java/br/com/gymhub/
-│   │   ├── GymHubApplication.java
-│   │   ├── controlador/
-│   │   │   ├── AlunoController.java
-│   │   │   ├── requisicao/AlunoFiltro.java
-│   │   │   └── resposta/AlunoSalvo.java
-│   │   ├── dominio/
-│   │   │   ├── entidade/AlunoEntidade.java
-│   │   │   ├── repositorio/AlunoRepository.java
-│   │   │   └── especificacao/AlunoSpecs.java
-│   │   ├── mapeador/AlunoMapper.java
-│   │   └── servico/
-│   │       ├── AlunoService.java
-│   │       └── AlunoServiceImpl.java
-│   └── resources/
-│       ├── application.yml
-│       └── db/migration/V1__FIRST_TABLES.sql
-└── test/
-    ├── java/br/com/gymhub/
-    │   ├── GymHubApplicationTest.java
-    │   ├── controlador/AlunoControllerIT.java
-    │   └── servico/AlunoServiceImplTest.java
-    └── resources/
-        ├── application-integration.yml
-        └── db/aluno/insert_alunos.sql
+```shell
+curl "http://localhost:8080/api/v1/aluno?nome=ana&page=0&size=10&sort=nome,asc"
 ```
 
-O fluxo da consulta é `AlunoController → AlunoServiceImpl → AlunoRepository → PostgreSQL`. `AlunoSpecs` constrói os critérios de busca; `AlunoMapper` converte a entidade em `AlunoSalvo`, preservando os metadados de paginação.
-
-## API disponível
-
-### Consultar alunos
-
-```http
-GET /api/v1/aluno?nome=ana&page=0&size=10&sort=nome,asc
-```
-
-| Parâmetro | Comportamento atual |
+| Parâmetro | Comportamento |
 | --- | --- |
-| `nome` | Busca parcial com `LIKE`, opcional |
-| `page` | Índice da página, começando em zero; padrão do resolver: `0` |
-| `size` | Quantidade de registros por página; padrão do resolver: `20` |
-| `sort` | Propriedade e direção, por exemplo `nome,asc` ou `nome,desc` |
+| `nome` | Busca parcial; envie em minúsculas |
+| `cpf` | Remove caracteres não numéricos do filtro e faz busca parcial |
+| `email` | Busca parcial; envie em minúsculas |
+| `dataNascimento` | Data exata; exemplo `2000-01-02` |
+| `page` | Página começando em zero; padrão 0 |
+| `size` | Tamanho da página; padrão 20 |
+| `sort` | Exemplo `nome,asc` ou `nome,desc` |
 
-A consulta transforma o nome da coluna em minúsculas, mas ainda não normaliza o parâmetro recebido. Use o filtro em minúsculas, como `nome=ana`, para o comportamento demonstrado nos testes.
+Os filtros são opcionais e combinados com AND. Nome e e-mail transformam a coluna
+em minúsculas, mas ainda não normalizam o parâmetro recebido. O controller não
+utiliza `@Valid`; a anotação `@CPF` no DTO não ativa automaticamente a validação.
 
-O DTO `AlunoFiltro` também declara `cpf`, `email` e `dataNascimento`, mas esses campos ainda não são aplicados pela Specification. A anotação `@CPF` existente no DTO também não implica validação automática do endpoint: o método do controller ainda não utiliza `@Valid`.
+A resposta é HTTP 200 com `content`, `number`, `size`, `totalElements`,
+`totalPages` e outros metadados de `Page`. Sem resultados, `content` é vazio.
+Cada aluno expõe `uuid`, `nome`, `cpf`, `email`, `dataNascimento` e `criadoEm`.
+O identificador interno `id` não é exposto.
 
-A resposta é `200 OK` com uma página. Sem resultados, `content` fica vazio e `totalElements` é zero. Cada aluno retorna:
+## Banco e migrações
 
-| Campo | Tipo |
+O Flyway cria e evolui as tabelas por scripts em
+`src/main/resources/db/migration`. O Hibernate apenas valida o mapeamento:
+
+| Configuração | Valor |
 | --- | --- |
-| `uuid` | UUID público do aluno |
-| `nome` | Texto |
-| `cpf` | Texto |
-| `email` | Texto |
-| `dataNascimento` | Data no formato `yyyy-MM-dd` |
-| `criadoEm` | Data e hora sem fuso |
+| `spring.jpa.hibernate.ddl-auto` | `validate` |
+| `spring.jpa.generate-ddl` | `false` |
+| `spring.sql.init.mode` | `never` |
+| `spring.flyway.enabled` | `true` |
+| `spring.flyway.validate-on-migrate` | `true` |
+| `spring.flyway.baseline-on-migrate` | `false` |
 
-Exemplo ilustrativo dos principais campos da resposta:
+`V1__FIRST_TABLES.sql` cria `aluno`, `plano`, `matricula`, suas sequences,
+relacionamentos e índice de nome. Somente aluno possui implementação Java.
+Há diferenças entre restrições da entidade e da migração, como a unicidade da
+data de nascimento declarada na entidade; o Hibernate não atualiza essas regras.
 
-```json
-{
-  "content": [
-    {
-      "uuid": "123e4567-e89b-12d3-a456-426614174001",
-      "nome": "Ana Silva",
-      "cpf": "12345678909",
-      "email": "ana@example.com",
-      "dataNascimento": "2000-01-02",
-      "criadoEm": "2026-10-28T10:00:00"
-    }
-  ],
-  "number": 0,
-  "size": 10,
-  "totalElements": 1,
-  "totalPages": 1
-}
-```
+Para mudar a estrutura, adicione uma nova migração, por exemplo
+`V2__ADICIONA_CAMPO_ALUNO.sql`, e ajuste a entidade. Não edite migrações já aplicadas
+nem utilize `ddl-auto: update`, `create` ou `create-drop`.
 
-O identificador interno `id` não é exposto pelo mapper. A resposta atual serializa diretamente `Page`; o exemplo omite os demais metadados dessa estrutura.
+O banco da aplicação usa o volume persistente `dados-postgres`. Para parar os
+containers preservando os dados, execute `docker compose down`. O comando
+`docker compose down -v` apaga o volume do banco: use apenas para reiniciar os
+dados de desenvolvimento do zero.
 
-## Banco de dados
+## Testes
 
-### Responsabilidade pelas tabelas
-
-O Flyway cria e evolui a estrutura do banco por scripts versionados em
-`src/main/resources/db/migration`. O Hibernate apenas valida o mapeamento das
-entidades ao iniciar a aplicação.
-
-| Configuração | Efeito |
-| --- | --- |
-| `spring.jpa.hibernate.ddl-auto: validate` | Verifica o esquema sem criar, alterar ou excluir tabelas |
-| `spring.jpa.generate-ddl: false` | Desabilita a geração de DDL pelo JPA |
-| `spring.sql.init.mode: never` | Desabilita a execução automática de `schema.sql` e `data.sql` |
-| `spring.flyway.enabled: true` | Executa as migrações pendentes na inicialização |
-| `spring.flyway.validate-on-migrate: true` | Valida as migrações já registradas antes de migrar |
-| `spring.flyway.baseline-on-migrate: false` | Exige tratamento explícito para adotar banco existente sem histórico Flyway |
-
-Para alterar o banco, crie uma nova migração, por exemplo
-`V2__ADICIONA_CAMPO_ALUNO.sql`, e ajuste a entidade correspondente. Preserve os
-scripts já aplicados: alterações em migrações existentes podem causar erro de
-checksum. Não utilize `ddl-auto: update`, `create` ou `create-drop`.
-
-Os testes de integração seguem a mesma política: Flyway aplica as migrações e
-Hibernate valida o esquema. O `@Sql` dos testes insere apenas a massa de dados
-dos cenários, com rollback ao final.
-
-A migração `src/main/resources/db/migration/V1__FIRST_TABLES.sql` cria:
-
-- `aluno`: identificação, nome, CPF, e-mail, nascimento e data de criação; índice de nome e unicidade de UUID, CPF e e-mail.
-- `plano`: identificação, nome, valor, duração em meses, indicador de ativo e data de criação.
-- `matricula`: vínculo entre aluno e plano, com datas de início, fim e criação; chaves estrangeiras para as duas tabelas.
-- Sequences `aluno_seq`, `plano_seq` e `matricula_seq`.
-
-`AlunoEntidade` está mapeada para `aluno`, com identificador gerado pela sequence. Somente esse módulo possui camada de persistência Java atualmente.
-
-Há diferenças entre as restrições declaradas na entidade e na migração, como a unicidade da data de nascimento na entidade. O perfil de integração usa `ddl-auto: validate`: a estrutura é criada pelo Flyway, sem atualização automática do esquema pelo Hibernate.
-
-## Subir o ambiente e executar todos os testes
-
-Com Docker Desktop em execução, use somente estes dois comandos na raiz do projeto:
+Com os bancos ativos, execute todos os testes:
 
 ```shell
 docker compose up -d
 mvn clean install
 ```
 
-O Compose principal sobe três serviços:
-
-| Serviço | Finalidade |
+| Classe | Escopo |
 | --- | --- |
-| `aplicacao` | API em `http://localhost:8080` |
-| `banco` | PostgreSQL da aplicação, com volume persistente |
-| `banco-teste` | PostgreSQL exclusivo dos testes em `127.0.0.1:15432` |
+| `AlunoServiceImplTest` | Unitário com Mockito, sem Spring ou banco |
+| `GymHubApplicationTest` | Contexto Spring com JPA, Flyway e PostgreSQL reais |
+| `AlunoControllerIT` | Integração via MockMvc, service, repository e banco reais |
 
-Na primeira execução, o Compose constrói a imagem da API se ela ainda não existir.
-Em execuções seguintes, ele reutiliza a imagem existente. Após alterar o código e
-querer atualizar a API que roda no container, execute `docker compose build aplicacao`
-e depois `docker compose up -d`.
+Os testes com contexto usam o perfil `integration` e o banco `gymhub_test`,
+separado do banco da aplicação. Não exigem a API iniciada na IDE nem servidor
+HTTP externo. `@Sql` prepara os alunos dos cenários do controller e
+`@Transactional` desfaz os inserts ao final de cada teste.
 
-`mvn clean install` compila, executa testes unitários e de contexto pelo Surefire,
-gera o JAR, executa os testes de integração `*IT` pelo Failsafe e verifica os
-resultados antes de instalar o artefato no repositório Maven local. Uma falha em
-qualquer suíte interrompe o build. O Maven usa o banco que já foi iniciado pelo
-Compose; ele não inicia nem desliga containers.
+Surefire executa `*Test`; Failsafe executa `*IT` durante `verify`/`install`.
+`mvn clean install` falha se qualquer suíte falhar. Relatórios:
+`target/surefire-reports` e `target/failsafe-reports`.
 
-| Classe | Tipo e cobertura |
-| --- | --- |
-| `AlunoServiceImplTest` | Unitário com Mockito: mapeamento, página vazia e propagação de exceção |
-| `GymHubApplicationTest` | Contexto Spring completo, com JPA, Flyway e PostgreSQL de testes reais |
-| `AlunoControllerIT` | Integração com MockMvc, controller, service e repository reais |
+Para testar somente o service: `mvn '-Dtest=AlunoServiceImplTest' test`.
+Para executar o controller isoladamente: `mvn '-Dtest=AlunoControllerIT' test`.
+`mvn test` isolado não seleciona `*IT` automaticamente.
 
-Os testes com contexto usam o perfil `integration`. O Flyway aplica as migrações,
-o Hibernate apenas valida o esquema e `@Sql` prepara os alunos de cada cenário do
-controller. `@Transactional` desfaz esses inserts ao final. Não há mocks de
-persistência nos testes com contexto nem servidor HTTP externo para o MockMvc.
+O Maven usa os bancos já iniciados; não gerencia os containers. Substitua `mvn`
+por `./mvnw` ou, no PowerShell, `./mvnw.cmd` se preferir o Maven Wrapper.
 
-O teste unitário do service permanece sem contexto Spring e sem conexão com banco.
-Para executá-lo isoladamente, use `mvn '-Dtest=AlunoServiceImplTest' test`.
-`mvn test` executa as classes `*Test`; `mvn verify` e `mvn clean install` incluem
-as classes `*IT`. Os relatórios ficam em `target/surefire-reports` e
-`target/failsafe-reports`, respectivamente.
-
-Sem Maven instalado, substitua `mvn` por `./mvnw` no Linux/Git Bash ou por
-`./mvnw.cmd` no PowerShell.
-
-### Configuração do banco de testes
-
-| Variável | Padrão no perfil de integração |
+| Variável dos testes | Padrão |
 | --- | --- |
 | `TEST_DB_URL` | `jdbc:postgresql://localhost:15432/gymhub_test` |
 | `TEST_DB_USER` | `gymhub_test` |
 | `TEST_DB_PASSWORD` | `gymhub_test` |
 
-As variáveis alteram a conexão dos testes, não as credenciais do serviço
-`banco-teste` no Compose. Use apenas um banco dedicado aos testes.
-`application-integration.yml` fica em `src/test/resources` e não é incluído no JAR.
-O banco de testes não possui volume nomeado persistente; o banco da aplicação
-permanece separado no volume `dados-postgres`.
+O perfil fica em `src/test/resources/application-integration.yml`, fora do JAR.
+Use somente banco dedicado aos testes. As variáveis alteram a conexão dos testes,
+não as credenciais do serviço `banco-teste`.
 
-O antigo `compose.test.yml` foi substituído pelo serviço `banco-teste` do Compose
-principal. Se ainda houver um container do projeto antigo usando a porta 15432,
-pare-o antes de subir o ambiente unificado.
+## Estrutura e tecnologias
 
-## Executar com Docker
-
-Com Docker Desktop em execução, na raiz do projeto:
-
-```shell
-docker compose up -d
-```
-
-O Compose constrói a imagem da aplicação quando necessário, inicia os dois bancos PostgreSQL e aguarda o healthcheck do banco da aplicação antes de iniciar a API. O Flyway aplica as migrações, e o Hibernate valida o esquema. A primeira construção baixa as imagens e dependências Maven; não exige Java ou Maven instalados na máquina.
-
-A API fica disponível em `http://localhost:8080`. Consulte os alunos:
-
-```shell
-curl "http://localhost:8080/api/v1/aluno?nome=ana&page=0&size=10&sort=nome,asc"
-```
-
-A migração não insere alunos de exemplo. Em um banco novo, a consulta retorna uma página vazia.
-
-Comandos úteis:
-
-```shell
-docker compose ps
-docker compose logs -f aplicacao
-docker compose down
-```
-
-`docker compose down` preserva os dados no volume `dados-postgres`. Para apagar o banco de desenvolvimento e recriá-lo do zero, utilize explicitamente `docker compose down -v`.
-
-### Configuração dos containers
-
-| Variável | Padrão | Finalidade |
-| --- | --- | --- |
-| `APP_PORT` | `8080` | Porta da API na máquina |
-| `DB_USER` | `gymhub` | Usuário PostgreSQL |
-| `DB_PASSWORD` | `gymhub` | Senha de desenvolvimento |
-
-Essas variáveis podem ser definidas no ambiente ou em um arquivo `.env` local. O Compose conecta a aplicação em `jdbc:postgresql://banco:5432/gymhub`; o banco não publica porta na máquina. As credenciais padrão servem para desenvolvimento. Alterar as credenciais no Compose não altera um banco já inicializado no volume.
-
-O `Dockerfile` usa construção em duas etapas: Maven com Java 17 para gerar o JAR e uma imagem JRE 17 para executá-lo. O build da imagem pula os testes. `.dockerignore` exclui Git, IDE, build local e arquivos de ambiente do contexto enviado ao Docker.
-
-## Executar sem Docker para a aplicação
-
-Com um PostgreSQL disponível, configure as variáveis de ambiente e execute:
-
-```shell
-mvn spring-boot:run
-```
-
-| Variável | Padrão fora do Compose |
-| --- | --- |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/gymhub` |
-| `DB_USER` | `gymhub` |
-| `DB_PASSWORD` | `gymhub` |
-
-O banco `gymhub` deve existir e estar acessível. JPA e Flyway já estão habilitados em `application.yml`. Para executar via JAR, use `mvn clean package` e `java -jar target/gym-hub-service-0.0.1-SNAPSHOT.jar` com as mesmas variáveis.
-
-## Organização dos pacotes
-
-O pacote raiz continua `br.com.gymhub`. Os subpacotes do projeto estão em português, sem acentos:
+O pacote raiz é `br.com.gymhub`, com subpacotes em português:
 
 | Pacote | Responsabilidade |
 | --- | --- |
 | `controlador` | Endpoints HTTP |
-| `controlador.requisicao` | DTOs recebidos pela API |
-| `controlador.resposta` | DTOs retornados pela API |
-| `servico` | Regras e coordenação das consultas |
+| `controlador.requisicao` / `controlador.resposta` | DTOs de entrada e saída |
+| `servico` | Coordenação e regras das consultas |
 | `dominio.entidade` | Entidades JPA |
 | `dominio.repositorio` | Acesso ao banco |
-| `dominio.especificacao` | Critérios de busca JPA |
+| `dominio.especificacao` | Critérios de pesquisa |
 | `mapeador` | Conversão de entidades para respostas |
 
-Os testes seguem os mesmos pacotes. Os nomes das classes existentes e a URL `/api/v1/aluno` foram preservados.
+O fluxo é `AlunoController → AlunoServiceImpl → AlunoRepository → PostgreSQL`.
+A aplicação usa Spring Web, Spring Data JPA/Hibernate, Validation, Flyway,
+PostgreSQL e Lombok. Testes usam JUnit 5, Mockito, AssertJ e MockMvc.
+Requisitos: JDK 17 ou superior, Maven/Wrapper e Docker Desktop com containers Linux.
 
 ## Problemas comuns
 
-| Sintoma | O que verificar |
+| Sintoma | Verificação |
 | --- | --- |
-| Docker não conecta ao mecanismo Linux | Iniciar Docker Desktop e aguardar o serviço ficar disponível |
-| Porta `8080` ocupada | Definir outra `APP_PORT` antes de subir o Compose |
-| Porta `15432` ocupada nos testes | Ajustar a porta de `banco-teste` em `compose.yml` e `TEST_DB_URL` em conjunto |
-| Erro de conexão na integração | Subir `docker compose up -d`, conferir `docker compose ps` e as variáveis `TEST_DB_*` |
-| API não inicia | Consultar `docker compose logs aplicacao banco` e verificar a conexão/migrações |
-| Integração não executada | Usar `mvn clean install` ou `mvn verify`; a fase `test` isolada não executa o Failsafe |
-| Busca não encontra nome com letras maiúsculas | Enviar `nome` em minúsculas enquanto o filtro não normaliza o parâmetro |
+| Erro de senha para `gymhub` | Conferir URL `localhost:5433` e variáveis da IDE; não usar o PostgreSQL local da porta 5432 |
+| Porta 8080 ocupada | Encerrar outra execução da API ou alterar `SERVER_PORT` |
+| Porta 15432 ocupada | Parar o container antigo de testes ou ajustar Compose e `TEST_DB_URL` juntos |
+| Banco indisponível | Conferir `docker compose ps` e `docker compose logs banco banco-teste` |
+| Migração falha | Conferir o erro no console da IDE e preservar scripts já aplicados |
+| Collection retorna página vazia | Banco da aplicação ainda não possui alunos correspondentes aos filtros |

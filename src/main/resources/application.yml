@@ -15,7 +15,7 @@ spring:
   application:
     name: gym-hub-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/gymhub}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/gymhub}
     username: ${DB_USER:gymhub}
     password: ${DB_PASSWORD:gymhub}
     driver-class-name: org.postgresql.Driver
