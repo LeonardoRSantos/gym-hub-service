@@ -1,3 +1,15 @@
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
 spring:
   application:
     name: gym-hub-service
@@ -5,9 +17,24 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gymhub}
     username: ${DB_USER:gymhub}
     password: ${DB_PASSWORD:gymhub}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      max-lifetime: 600000
+      maximum-pool-size: 20
+      minimum-idle: 5
+  sql:
+    init:
+      # A estrutura e os dados iniciais devem ser versionados pelo Flyway.
+      mode: never
   jpa:
+    generate-ddl: false
     hibernate:
+      # Valida as entidades sem criar, alterar ou excluir tabelas.
       ddl-auto: validate
     open-in-view: false
   flyway:
     enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    baseline-on-migrate: false

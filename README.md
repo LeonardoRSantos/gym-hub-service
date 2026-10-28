@@ -125,6 +125,30 @@ O identificador interno `id` não é exposto pelo mapper. A resposta atual seria
 
 ## Banco de dados
 
+### Responsabilidade pelas tabelas
+
+O Flyway cria e evolui a estrutura do banco por scripts versionados em
+`src/main/resources/db/migration`. O Hibernate apenas valida o mapeamento das
+entidades ao iniciar a aplicação.
+
+| Configuração | Efeito |
+| --- | --- |
+| `spring.jpa.hibernate.ddl-auto: validate` | Verifica o esquema sem criar, alterar ou excluir tabelas |
+| `spring.jpa.generate-ddl: false` | Desabilita a geração de DDL pelo JPA |
+| `spring.sql.init.mode: never` | Desabilita a execução automática de `schema.sql` e `data.sql` |
+| `spring.flyway.enabled: true` | Executa as migrações pendentes na inicialização |
+| `spring.flyway.validate-on-migrate: true` | Valida as migrações já registradas antes de migrar |
+| `spring.flyway.baseline-on-migrate: false` | Exige tratamento explícito para adotar banco existente sem histórico Flyway |
+
+Para alterar o banco, crie uma nova migração, por exemplo
+`V2__ADICIONA_CAMPO_ALUNO.sql`, e ajuste a entidade correspondente. Preserve os
+scripts já aplicados: alterações em migrações existentes podem causar erro de
+checksum. Não utilize `ddl-auto: update`, `create` ou `create-drop`.
+
+Os testes de integração seguem a mesma política: Flyway aplica as migrações e
+Hibernate valida o esquema. O `@Sql` dos testes insere apenas a massa de dados
+dos cenários, com rollback ao final.
+
 A migração `src/main/resources/db/migration/V1__FIRST_TABLES.sql` cria:
 
 - `aluno`: identificação, nome, CPF, e-mail, nascimento e data de criação; índice de nome e unicidade de UUID, CPF e e-mail.

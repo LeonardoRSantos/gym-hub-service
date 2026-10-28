@@ -1,7 +1,5 @@
 spring:
-  # Reativa banco e migracoes apenas nos testes de integracao.
-  autoconfigure:
-    exclude: ""
+  # Usa banco exclusivo de testes e herda a politica de migracoes da aplicacao.
   datasource:
     url: ${TEST_DB_URL:jdbc:postgresql://localhost:15432/gymhub_test}
     username: ${TEST_DB_USER:gymhub_test}
