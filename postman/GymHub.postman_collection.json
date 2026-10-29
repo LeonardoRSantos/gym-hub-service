@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Gym Hub Service",
-    "description": "API executada pela IDE, com PostgreSQL no Docker. Inicie os bancos com docker compose up -d e execute GymHubApplication. Apenas endpoints existentes. Exemplos usam valores ilustrativos: a migração não cadastra alunos. Os testes validam formato e HTTP, sem exigir dados fixos.",
+    "description": "API local pela IDE; somente PostgreSQL no Docker. Inicie docker compose up -d e GymHubApplication. Consultas aceitam pagina vazia. A pasta Ciclo de aluno cria um registro novo, guarda seu UUID e o exclui ao final. Execute essa pasta em ordem. Validacoes usam entradas invalidas ou UUID inexistente.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -22,29 +22,26 @@
       "key": "size",
       "value": "10",
       "type": "string"
-    }
-  ],
-  "event": [
+    },
     {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
-          "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
-          "pm.test(\"Resposta paginada\", function () {",
-          "  const pagina = pm.response.json();",
-          "  pm.expect(pagina.content).to.be.an(\"array\");",
-          "  pm.expect(pagina.totalElements).to.be.a(\"number\");",
-          "  pm.expect(pagina.number).to.be.a(\"number\");",
-          "});"
-        ]
-      }
+      "key": "alunoUuid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cpfCadastro",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "emailCadastro",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "Alunos",
+      "name": "Consultas de alunos",
       "item": [
         {
           "name": "Listar alunos",
@@ -467,6 +464,532 @@
                   "key": "sort",
                   "value": "nome,asc"
                 }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+              "pm.test(\"Resposta paginada\", function () { const p = pm.response.json(); pm.expect(p.content).to.be.an(\"array\"); pm.expect(p.totalElements).to.be.a(\"number\"); pm.expect(p.number).to.be.a(\"number\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ciclo de aluno - executar em ordem",
+      "description": "Cria dados novos, consulta, verifica duplicidade, edita e exclui somente o aluno criado. A exclusao e permanente. Usa UUID retornado pelo cadastro, nunca um UUID fixo de outro aluno.",
+      "item": [
+        {
+          "name": "01 - Cadastrar aluno",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const digitos = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));",
+                  "function verificador(d) { const soma = d.reduce((t, n, i) => t + n * (d.length + 1 - i), 0); const resto = (soma * 10) % 11; return resto === 10 ? 0 : resto; }",
+                  "digitos.push(verificador(digitos));",
+                  "digitos.push(verificador(digitos));",
+                  "pm.collectionVariables.set(\"cpfCadastro\", digitos.join(\"\"));",
+                  "pm.collectionVariables.set(\"emailCadastro\", \"aluno.collection.\" + Date.now() + \".\" + digitos.join(\"\") + \"@example.com\");",
+                  "pm.collectionVariables.unset(\"alunoUuid\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Dados do aluno\", function () { const aluno = pm.response.json(); pm.expect(aluno.uuid).to.be.a(\"string\"); pm.expect(aluno.nome).to.be.a(\"string\"); });",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set(\"alunoUuid\", pm.response.json().uuid); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Gera CPF valido sem pontuacao e email novo antes de enviar. Guarda alunoUuid em caso de sucesso.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Aluno Collection\",\n  \"cpf\": \"{{cpfCadastro}}\",\n  \"email\": \"{{emailCadastro}}\",\n  \"dataNascimento\": \"1990-07-08\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Buscar aluno por UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Dados do aluno\", function () { const aluno = pm.response.json(); pm.expect(aluno.uuid).to.be.a(\"string\"); pm.expect(aluno.nome).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/{{alunoUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "{{alunoUuid}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Rejeitar CPF duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Mensagem de CPF duplicado\", function () { pm.expect(pm.response.json().mensagem).to.eql(\"O CPF já está cadastrado, informar um novo CPF.\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Aluno Collection\",\n  \"cpf\": \"{{cpfCadastro}}\",\n  \"email\": \"{{emailCadastro}}\",\n  \"dataNascimento\": \"1990-07-08\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Editar aluno",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Dados do aluno\", function () { const aluno = pm.response.json(); pm.expect(aluno.uuid).to.be.a(\"string\"); pm.expect(aluno.nome).to.be.a(\"string\"); });",
+                  "pm.test(\"Nome atualizado\", function () { pm.expect(pm.response.json().nome).to.eql(\"Aluno Collection Atualizado\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "UUID no corpo e na URL devem corresponder. Os demais campos sao opcionais na edicao.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/{{alunoUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "{{alunoUuid}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid\": \"{{alunoUuid}}\",\n  \"nome\": \"Aluno Collection Atualizado\",\n  \"cpf\": \"{{cpfCadastro}}\",\n  \"email\": \"{{emailCadastro}}\",\n  \"dataNascimento\": \"1991-08-09\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Confirmar edicao",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Edicao persistida\", function () { pm.expect(pm.response.json().nome).to.eql(\"Aluno Collection Atualizado\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/{{alunoUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "{{alunoUuid}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Excluir aluno criado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Exclusao confirmada\", function () { pm.expect(pm.response.json().message).to.eql(\"Aluno deletado com sucesso!\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Remove permanentemente o alunoUuid criado no passo 01.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/{{alunoUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "{{alunoUuid}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Confirmar ausencia apos exclusao",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });",
+                  "pm.test(\"Aluno nao encontrado\", function () { pm.expect(pm.response.json().mensagem).to.eql(\"Aluno não encontrado.\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/{{alunoUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "{{alunoUuid}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Validacoes de entrada",
+      "item": [
+        {
+          "name": "Cadastro com CPF invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Validacao do DTO; o formato do corpo de erro ainda nao e padronizado para Bean Validation.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Aluno Invalido\",\n  \"cpf\": \"123\",\n  \"email\": \"invalido@example.com\",\n  \"dataNascimento\": \"1990-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edicao sem UUID no corpo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "O DTO de edicao exige uuid no corpo, mesmo que a URL o contenha.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Aluno Invalido\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar UUID inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Excluir UUID inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Resposta JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json\\b/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aluno/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "aluno",
+                "00000000-0000-0000-0000-000000000000"
               ]
             }
           },
